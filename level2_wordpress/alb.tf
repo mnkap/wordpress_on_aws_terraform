@@ -3,8 +3,8 @@ module "alb" {
   version         = "8.2.1"
   name            = "awslb"
   security_groups = [aws_security_group.load_balancer.id]
-  vpc_id          = data.terraform_remote_state.level1.outputs.vpc_id
-  subnets         = [data.terraform_remote_state.level1.outputs.public_subnets[0], data.terraform_remote_state.level1.outputs.public_subnets[1]]
+  vpc_id          = data.terraform_remote_state.level1_wordpress.outputs.vpc_id
+  subnets         = [data.terraform_remote_state.level1_wordpress.outputs.public_subnets[0], data.terraform_remote_state.level1_wordpress.outputs.public_subnets[1]]
 
   target_groups = [
     {
@@ -14,12 +14,19 @@ module "alb" {
     }
   ]
 
+  http_tcp_listeners = [
+    {
+      port               = 80
+      protocol           = "HTTP"
+      target_group_index = 0
+    }
+  ]
 }
 
 resource "aws_security_group" "load_balancer" {
   name        = "${var.env_code}-load-balancer"
   description = "Allow port 80 TCP inbound to ELB"
-  vpc_id      = data.terraform_remote_state.level1.outputs.vpc_id
+  vpc_id      = data.terraform_remote_state.level1_wordpress.outputs.vpc_id
 
   ingress {
     description = "HTTPS from public"

@@ -1,4 +1,4 @@
-data "terraform_remote_state" "level1" {
+data "terraform_remote_state" "level1_wordpress" {
   backend = "s3"
 
   config = {
