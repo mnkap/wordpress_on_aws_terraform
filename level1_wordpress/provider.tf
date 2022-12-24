@@ -6,6 +6,7 @@ terraform {
     }
   }
 
+
   backend "s3" {
     bucket         = "terraform-remote-state-aws-wordpress"
     key            = "level1_wordpress.tfstate"

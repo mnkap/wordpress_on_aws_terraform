@@ -6,6 +6,7 @@ module "alb" {
   vpc_id          = data.terraform_remote_state.level1_wordpress.outputs.vpc_id
   subnets         = [data.terraform_remote_state.level1_wordpress.outputs.public_subnets[0], data.terraform_remote_state.level1_wordpress.outputs.public_subnets[1]]
 
+
   target_groups = [
     {
       name_prefix      = "pref-"
@@ -13,6 +14,7 @@ module "alb" {
       backend_port     = 80
     }
   ]
+
 
   http_tcp_listeners = [
     {
@@ -28,6 +30,7 @@ resource "aws_security_group" "load_balancer" {
   description = "Allow port 80 TCP inbound to ELB"
   vpc_id      = data.terraform_remote_state.level1_wordpress.outputs.vpc_id
 
+
   ingress {
     description = "HTTPS from public"
     from_port   = 443
@@ -35,6 +38,7 @@ resource "aws_security_group" "load_balancer" {
     protocol    = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
   }
+
 
   ingress {
     description = "HTTP from public"
@@ -44,12 +48,14 @@ resource "aws_security_group" "load_balancer" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 
+
   egress {
     from_port   = 0
     to_port     = 0
     protocol    = "ALL"
     cidr_blocks = ["0.0.0.0/0"]
   }
+
 
   tags = {
     Name = "${var.env_code}-load_balancer"
