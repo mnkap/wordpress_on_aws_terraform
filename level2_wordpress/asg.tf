@@ -3,7 +3,7 @@ module "asg" {
   version       = "6.5.3"
   image_id      = data.aws_ami.amazonlinux.id
   instance_type = "t2.micro"
-  user_data     = base64encode(data.template_file.test.rendered)
+  user_data     = base64encode(data.template_file.user_data.rendered)
 
   name                = "webservers-asg"
   health_check_type   = "EC2"
@@ -12,7 +12,7 @@ module "asg" {
   min_size            = 2
   vpc_zone_identifier = [data.terraform_remote_state.level1_wordpress.outputs.private_subnets[0], data.terraform_remote_state.level1_wordpress.outputs.private_subnets[1]]
   security_groups     = [aws_security_group.load_balancer.id]
-  target_group_arns   = ["arn:aws:elasticloadbalancing:us-east-1:182678615463:targetgroup/pref-20221223142242359400000004/e3d3f81de3715e11"]
+  target_group_arns   = ["arn:aws:elasticloadbalancing:us-east-1:182678615463:targetgroup/pref-20221228133753128300000003/5081d0b73557f13c"]
 
   create_iam_instance_profile = true
   iam_role_name               = "example-asg"
@@ -94,24 +94,64 @@ resource "aws_security_group" "private" {
   }
 }
 
-data "template_file" "test" {
-  template = <<EOF
-  #!/bin/bash
-  sudo yum update -y
-  sudo yum install -y httpd mariadb-server
-  sudo systemctl start httpd && sudo systemctl enable httpd
-  sudo systemctl start mariadb
-  sudo usermod -a -G apache ec2-user
-  sudo chown -R ec2-user:apache /var/www
-  sudo chmod 2775 /var/www && find /var/www -type d -exec sudo chmod 2775 {} \;
-  find /var/www -type f -exec sudo chmod 0664 {} \;
-  sudo yum install epel-release yum-utils wget -y
-  sudo amazon-linux-extras enable php8.0
-  sudo yum clean metadata && sudo yum install yum install php-cli php-pdo php-fpm php-mysqlnd -y
-  sudo wget https://wordpress.org/latest.tar.gz
-  sudo tar -xzvf latest.tar.gz
-  sudo cp -r wordpress/* /var/www/html/
-  sudo chown -R apache:apache /var/www/html
-  sudo systemctl restart httpd
-  EOF
+module "rds" {
+  source                 = "terraform-aws-modules/rds/aws"
+  identifier             = "mydb"
+  db_name                = "wp_db"
+  engine                 = "mysql"
+  engine_version         = "5.7.33"
+  major_engine_version   = "5.7"
+  parameter_group_name   = "default-mysql57"
+  multi_az               = false
+  instance_class         = "db.t3.micro"
+  storage_type           = "standard"
+  family                 = "mysql5.7"
+  skip_final_snapshot    = true
+  allocated_storage      = 10
+  create_db_subnet_group = false
+  create_random_password = false
+  username               = "dbadmin"
+  password               = local.wprdspassword
+  db_subnet_group_name   = aws_db_subnet_group.main.name
+  subnet_ids             = [data.terraform_remote_state.level1_wordpress.outputs.private_subnets[0], data.terraform_remote_state.level1_wordpress.outputs.private_subnets[1]]
+  vpc_security_group_ids = [aws_security_group.rds.id]
+}
+
+resource "aws_db_subnet_group" "main" {
+  name       = "main"
+  subnet_ids = data.terraform_remote_state.level1_wordpress.outputs.private_subnets
+
+
+  tags = {
+    Name = "Education"
+  }
+}
+
+resource "aws_security_group" "rds" {
+  name   = "education_rds"
+  vpc_id = data.terraform_remote_state.level1_wordpress.outputs.vpc_id
+
+
+  ingress {
+    from_port   = 3306
+    to_port     = 3306
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+
+  tags = {
+    Name = "education_rds"
+  }
+}
+
+
+data "template_file" "user_data" {
+  template = file("${path.module}/user_data.tpl")
+  vars = {
+    db_username      = "dbadmin"
+    db_user_password = local.wprdspassword
+    db_name          = "wp_db"
+    db_RDS           = module.rds.db_instance_endpoint
+  }
 }

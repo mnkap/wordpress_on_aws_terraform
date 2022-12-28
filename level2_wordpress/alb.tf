@@ -6,7 +6,6 @@ module "alb" {
   vpc_id          = data.terraform_remote_state.level1_wordpress.outputs.vpc_id
   subnets         = [data.terraform_remote_state.level1_wordpress.outputs.public_subnets[0], data.terraform_remote_state.level1_wordpress.outputs.public_subnets[1]]
 
-
   target_groups = [
     {
       name_prefix      = "pref-"
