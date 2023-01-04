@@ -13,9 +13,8 @@ module "alb" {
       backend_port     = 80
     }
   ]
-
-
-  http_tcp_listeners = [
+  
+ http_tcp_listeners = [
     {
       port               = 80
       protocol           = "HTTP"
@@ -60,3 +59,4 @@ resource "aws_security_group" "load_balancer" {
     Name = "${var.env_code}-load_balancer"
   }
 }
+
